@@ -7,8 +7,8 @@ Import aedat version 1 or 2.
 """
 
 import numpy as np
-from PyAedatTools.FindFirstAndLastTimeStamps import FindFirstAndLastTimeStamps
-from PyAedatTools.NumEventsByType import NumEventsByType
+from AedatTools.PyAedatTools.FindFirstAndLastTimeStamps import FindFirstAndLastTimeStamps
+from AedatTools.PyAedatTools.NumEventsByType import NumEventsByType
 
 def ImportAedatDataVersion1or2(aedat):
     """
@@ -16,7 +16,9 @@ def ImportAedatDataVersion1or2(aedat):
     """
 
     # unpack    
+    # aedat['info']['filePathOrName'] =aedat['importParams']['filePath']
     info = aedat['info']
+    # info = aedat['importParams']['filePath']
     importParams = aedat['importParams']
     fileHandle = importParams['fileHandle']
 
@@ -57,7 +59,7 @@ def ImportAedatDataVersion1or2(aedat):
     numEventsToRead = endEvent - startEvent + 1
 
     # Read events
-    print 'Reading events ...'
+    print('Reading events ...')
     fileHandle.seek(info['beginningOfDataPointer'] + numBytesPerEvent *
                      startEvent)
     allEvents = np.fromfile(fileHandle, addrPrecision, numEventsToRead)
@@ -70,13 +72,13 @@ def ImportAedatDataVersion1or2(aedat):
     # timestamps.
 
     if 'startTime' in importParams:
-        print 'Cropping events by time ...'
+        print('Cropping events by time ...')
         tempIndex = np.nonzero(allTs >= importParams['startTime'] * 1e6)
         allAddr = allAddr[tempIndex]
         allTs = allTs[tempIndex]
 
     if 'endTime' in importParams:
-        print 'Cropping events by time ...'
+        print('Cropping events by time ...')
         tempIndex = np.nonzero(allTs <= importParams['endTime'] * 1e6)
         allAddr = allAddr[tempIndex]
         allTs = allTs[tempIndex]
@@ -117,30 +119,73 @@ def ImportAedatDataVersion1or2(aedat):
     if info['source'] == 'Das1':
 
         # To do: DAS
-        pass
+        #pass
+        print('Das1')
     
     elif info['source'] == 'Dvs128':
     
         # To do: Dvs128
-        pass
+        # DVS128
+        specialMask = int('8000', 16)
+        specialLogical = np.bitwise_and(allAddr, specialMask)
+        polarityLogical = np.logical_not(specialLogical)
+		# Special events
+        if ('dataTypes' not in importParams or 'special' in importParams['dataTypes']) \
+                  and any(specialLogical):
+            print('Processing special events ...')
+            outputData['special'] = {}
+            outputData['special']['timeStamp'] = allTs[specialLogical] 
+            # No need to create address field, since there is only one type of special event
+        del specialLogical
+        
+        # Polarity(DVS) events
+        if ('dataTypes' not in importParams or 'polarity' in importParams['dataTypes']) \
+                and any(polarityLogical):
+            print('Processing polarity events ...')
+              # These masks are used for both frames and polarity events, so are defined
+            # outside of the following if statement
+            
+            polarityData = allAddr[polarityLogical]  
+            
+            outputData['polarity'] = {}
+            outputData['polarity']['timeStamp'] = allTs[polarityLogical]
+            # Y addresses
+            yMask = int('7F00', 16)
+            yShiftBits = 8
+            outputData['polarity']['y'] = np.array(np.right_shift( \
+                np.bitwise_and(polarityData, yMask), yShiftBits), 'uint16')
+            # X addresses
+            xMask = int('fE', 16)
+            xShiftBits = 1 
+            outputData['polarity']['x'] = np.array(np.right_shift( \
+                np.bitwise_and(polarityData, xMask), xShiftBits), 'uint16')
+            # Polarity bit
+            polBit = 1
+            
+            
+            del polarityData
+        del polarityLogical
+				
+        print('Dvs128')
+        #pass
     
     else: # DAVIS
-    
+        print('DAVIS ...')
         """ 
         In the 32-bit address:
         bit 32 (1-based) being 1 indicates an APS sample
         bit 11 (1-based) being 1 indicates a special event 
         bits 11 and 32 (1-based) both being zero signals a polarity event
         """
-
-        print 'Building logical indices by type ...'        
+    
+        print('Building logical indices by type ...')     
         apsOrImuMask = int('80000000', 16)
         apsOrImuLogical = np.bitwise_and(allAddr, apsOrImuMask)
         apsOrImuLogical = apsOrImuLogical.astype(bool)
         signalOrSpecialMask = int('400', 16)
         signalOrSpecialLogical = np.bitwise_and(allAddr, signalOrSpecialMask)
         signalOrSpecialLogical = signalOrSpecialLogical.astype(bool)
-
+    
         # These masks are used for both frames and polarity events, so are defined
         # outside of the following if statement
         yMask = int('7FC00000', 16)
@@ -151,12 +196,12 @@ def ImportAedatDataVersion1or2(aedat):
         
         specialLogical = np.logical_and(signalOrSpecialLogical,
                                        np.logical_not(apsOrImuLogical))
-    # Special events
+        # Special events
         if ('dataTypes' not in importParams or 'special' in importParams['dataTypes']) \
                  and any(specialLogical):
-            print 'Processing special events ...'
+            print('Processing special events ...')
             outputData['special'] = {}
-            outputData['special']['timeStamp'] = allTs[specialLogical] 
+            outputData['special']['ts'] = allTs[specialLogical] 
             # No need to create address field, since there is only one type of special event
         del specialLogical
     
@@ -165,34 +210,34 @@ def ImportAedatDataVersion1or2(aedat):
         # Polarity(DVS) events
         if ('dataTypes' not in importParams or 'polarity' in importParams['dataTypes']) \
                 and any(polarityLogical):
-            print 'Processing polarity events ...'
+            print('Processing polarity events ...')
             polarityData = allAddr[polarityLogical]         
-            outputData['polarity'] = {}
-            outputData['polarity']['timeStamp'] = allTs[polarityLogical]
+            outputData['dvs'] = {}
+            outputData['dvs']['ts'] = allTs[polarityLogical]
             # Y addresses
-            outputData['polarity']['y'] = np.array(np.right_shift( \
+            outputData['dvs']['y'] = np.array(np.right_shift( \
                 np.bitwise_and(polarityData, yMask), yShiftBits), 'uint16')
             # X addresses
-            outputData['polarity']['x'] = np.array(np.right_shift( \
+            outputData['dvs']['x'] = np.array(np.right_shift( \
                 np.bitwise_and(polarityData, xMask), xShiftBits), 'uint16')
             # Polarity bit
             
             # Note: no need for a bitshift here, since its converted to boolean anyway
-            outputData['polarity']['polarity'] = np.array( \
+            outputData['dvs']['pol'] = np.array( \
             np.bitwise_and(polarityData, polarityMask), 'bool')
             del polarityData
         del polarityLogical
-
-
+    
+    
         ImuOrPolarityMask = int('800', 16)
         ImuOrPolarityLogical = np.bitwise_and(allAddr, ImuOrPolarityMask)
         ImuOrPolarityLogical = ImuOrPolarityLogical.astype(bool)
         frameLogical = np.logical_and(apsOrImuLogical,
                                      np.logical_not(ImuOrPolarityLogical))
-       # Frame events
+        # Frame events
         if ('dataTypes' not in importParams or 'frame' in importParams['dataTypes']) \
                 and any(frameLogical):
-            print 'Processing frames ...'
+            print('Processing frames ...')
             frameSampleMask = int('1111111111', 2) 
             
             frameData = allAddr[frameLogical] 
@@ -225,10 +270,10 @@ def ImportAedatDataVersion1or2(aedat):
             outputData['frame']['yLength']          = np.zeros(numFrames, 'uint16') 
             outputData['frame']['xPosition']        = np.zeros(numFrames, 'uint16') 
             outputData['frame']['yPosition']        = np.zeros(numFrames, 'uint16') 
-            
+             
             for frameIndex in range(0, numFrames) :
                 if frameIndex % 10 == 9:
-                    print 'Processing frame ', frameIndex + 1, ' of ', numFrames
+                    print('Processing frame ', frameIndex + 1, ' of ', numFrames)
                 # All within a frame should be either reset or signal. I could
                 # implement a check here to see that that's true, but I haven't
                 # done so; rather I just take the first value
@@ -271,9 +316,9 @@ def ImportAedatDataVersion1or2(aedat):
                                 frameX[sampleIndex] \
                                     - outputData['frame']['xPosition'][frameIndex]] \
                         = frameSample[sampleIndex] 
-
-                outputData['frame']['samples'][frameIndex] = tempSamples 
     
+                outputData['frame']['samples'][frameIndex] = tempSamples 
+     
             if (not ('subtractResetRead' in importParams) or importParams['subtractResetRead']) \
                     and 'reset' in outputData['frame']:
                 # Make a second pass through the frames, subtracting reset
@@ -281,7 +326,7 @@ def ImportAedatDataVersion1or2(aedat):
                 frameCount = 0
                 for frameIndex in range(0, numFrames):
                     if frameIndex % 10 == 9:
-                        print 'Performing subtraction on frame ', frameIndex + 1, ' of ', numFrames
+                        print('Performing subtraction on frame ', frameIndex + 1, ' of ', numFrames)
                     if outputData['frame']['reset'][frameIndex]: 
                         resetFrame = outputData['frame']['samples'][frameIndex] 
                         resetXPosition = outputData['frame']['xPosition'][frameIndex] 
@@ -341,22 +386,22 @@ def ImportAedatDataVersion1or2(aedat):
                     = outputData['frame']['samples'][0 : frameCount]
                 del outputData['frame']['reset']   # reset is no longer needed
         del frameLogical
+ 
+ 
+         # IMU events
+         # These come in blocks of 7, for the 7 different values produced in
+         # a single sample; the following code recomposes these
+         # 7 words are sent in series, these being 3 axes for accel, temperature, and 3 axes for gyro
     
-    
-        # IMU events
-        # These come in blocks of 7, for the 7 different values produced in
-        # a single sample; the following code recomposes these
-        # 7 words are sent in series, these being 3 axes for accel, temperature, and 3 axes for gyro
-
         imuLogical = np.logical_and(apsOrImuLogical, ImuOrPolarityLogical)
         if ('dataTypes' not in importParams or 'imu6' in importParams['dataTypes']) \
                 and any(imuLogical):
-            print 'Processing IMU6 events ...'
+            print('Processing IMU6 events ...')
             outputData['imu6'] = {}
             outputData['imu6']['timeStamp'] = allTs[imuLogical]
-
+    
             if np.mod(np.count_nonzero(imuLogical), 7) > 0: 
-                print 'The number of IMU samples is not divisible by 7, so IMU samples are not interpretable'
+                print('The number of IMU samples is not divisible by 7, so IMU samples are not interpretable')
             else:
                 outputData['imu6']['timeStamp'] = allTs[imuLogical]
                 outputData['imu6']['timeStamp'] \
@@ -395,6 +440,8 @@ def ImportAedatDataVersion1or2(aedat):
     info['firstTimeStamp'] = np.infty
     info['lastTimeStamp'] = 0
 
+    info = {}
+    info['filePathOrName'] = aedat['importParams']['filePath']
     aedat['info'] = info
     aedat['data'] = outputData
 

@@ -15,7 +15,7 @@ Code contributions from Bodo Rueckhauser
 
 """
 
-from PyAedatTools.BasicSourceName import BasicSourceName 
+from AedatTools.PyAedatTools.BasicSourceName import BasicSourceName 
 
 def ImportAedatHeaders(aedat):
 
