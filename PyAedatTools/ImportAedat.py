@@ -10,6 +10,8 @@ from AedatTools.PyAedatTools.ImportAedatHeaders import ImportAedatHeaders
 from AedatTools.PyAedatTools.ImportAedatDataVersion1or2 import ImportAedatDataVersion1or2
 from AedatTools.PyAedatTools.ImportAedatDataVersion3 import ImportAedatDataVersion3
 
+from AedatTools.PyAedatTools.ImportAedatDataVersion1or2_0 import ImportAedatDataVersion1or2_0
+
 def ImportAedat(aedat):
     """
     Parameters
@@ -25,7 +27,7 @@ def ImportAedat(aedat):
     with open(aedat['importParams']['filePath'], 'rb') as aedat['importParams']['fileHandle']:
         aedat = ImportAedatHeaders(aedat)
         if aedat['info']['fileFormat'] < 3:
-            return ImportAedatDataVersion1or2(aedat)
+            return ImportAedatDataVersion1or2_0(aedat)
         else:
             return ImportAedatDataVersion3(aedat)
  

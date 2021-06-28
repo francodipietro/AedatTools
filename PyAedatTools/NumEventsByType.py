@@ -5,12 +5,20 @@ def NumEventsByType(aedat):
     If there are no events, remove the data type field. 
     '''
     
+    # if 'special' in aedat['data']:
+    #     aedat['data']['special']['numEvents'] = len(aedat['data']['special']['ts'])
+    #     if aedat['data']['special']['numEvents'] == 0:
+    #         del aedat['data']['special']
+    # if 'polarity' in aedat['data']:
+    #     aedat['data']['polarity']['numEvents'] = len(aedat['data']['dvs']['ts'])
+    #     if aedat['data']['polarity']['numEvents'] == 0:
+    #         del aedat['data']['polarity']
     if 'special' in aedat['data']:
-        aedat['data']['special']['numEvents'] = len(aedat['data']['special']['ts'])
+        aedat['data']['special']['numEvents'] = len(aedat['data']['special']['timeStamp'])
         if aedat['data']['special']['numEvents'] == 0:
             del aedat['data']['special']
     if 'polarity' in aedat['data']:
-        aedat['data']['polarity']['numEvents'] = len(aedat['data']['dvs']['ts'])
+        aedat['data']['polarity']['numEvents'] = len(aedat['data']['polarity']['timeStamp'])
         if aedat['data']['polarity']['numEvents'] == 0:
             del aedat['data']['polarity']
     if 'frame' in aedat['data']:

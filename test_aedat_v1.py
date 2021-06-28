@@ -33,7 +33,7 @@ aedat = {}
 aedat['importParams'] = {}
 
 # Put the filename, including full path, in the 'filePath' field.
-aedat['importParams']['filePath'] = '/home/slam/datasets/mov1.aedat'# Working with a file where the source hasn't been declared - do this explicitly:
+aedat['importParams']['filePath'] = '/home/fdipietro/data/DHP19/mov1.aedat'# Working with a file where the source hasn't been declared - do this explicitly:
 aedat['importParams']['source'] = 'Davis240b';
 
 # Shape container to play on mustard
